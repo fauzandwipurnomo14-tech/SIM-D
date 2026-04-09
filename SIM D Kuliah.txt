@@ -1,0 +1,4 @@
+Proyek akhir mata kuliah sim : 
+1. Deploy R-Markdown melalui RPubs
+Menyimpan dan melakukan 
+Membuat web
