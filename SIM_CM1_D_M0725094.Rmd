@@ -1,0 +1,285 @@
+---
+title: "Analisis Kategori Film dengan Jumlah Rental Tertinggi Belum Tentu Menghasilkan Pendapatan Terbesar"
+author: "Fauzan Dwi Purnomo | M0725094 | Kelas D"
+date: "`r Sys.Date()`"
+output:
+html_document:
+    toc: true
+    toc_float: true
+    number_sections: true
+    theme: flatly
+    highlight: tango
+    code_folding: hide
+    df_print: paged
+---
+
+
+<style>
+
+body{
+  font-family: 'Segoe UI';
+}
+
+</style>
+
+<style>
+
+body{
+    font-family: 'Segoe UI', sans-serif;
+    background-color: #f7fbff;
+    color: #222222;
+    line-height: 1.7;
+}
+
+
+h1{
+    color:#0B3C5D;
+    border-bottom:4px solid #0B3C5D;
+    padding-bottom:10px;
+    font-weight:bold;
+}
+
+h2{
+    color:#145374;
+    margin-top:40px;
+    font-weight:bold;
+}
+
+h3{
+    color:#1B6CA8;
+    font-weight:bold;
+}
+
+table{
+    border-radius:10px;
+    overflow:hidden;
+}
+
+blockquote{
+    background:#e8f4ff;
+    border-left:6px solid #1B6CA8;
+    padding:15px;
+    border-radius:10px;
+}
+
+pre{
+    border-radius:10px;
+}
+
+code{
+    color:#C7254E;
+}
+
+</style>
+
+# Deskripsi Data
+
+> Dataset Sakila merupakan database simulasi rental film yang disediakan oleh MySQL. Dataset ini memiliki berbagai tabel relasional seperti film, customer, payment, rental, inventory, category, dan store.
+Melalui analisis data ini, perusahaan rental film dapat memahami kategori film paling menguntungkan perilaku pelanggan pola transaksi strategi peningkatan pendapatan dan loyalitas customer
+
+**Insight utama yang diambil dalam laporan ini adalah:**
+
+> Kategori Film dengan Jumlah Rental Tertinggi Belum Tentu Menghasilkan Pendapatan Terbesar"
+
+
+# Import Library
+```{r}
+library(DBI)
+library(odbc)
+library(dplyr)
+library(ggplot2)
+library(knitr)
+
+```
+
+# Koneksi data
+```{r}
+con <- dbConnect(
+  odbc(),
+  Driver = "MySQL ODBC 8.0 ANSI Driver",
+  Server = "127.0.0.1",
+  Database = "sakila",
+  UID = "root",
+  PWD = "141206",
+  Port = 3306
+)
+
+query <- "
+
+SELECT
+
+    c.name AS category,
+    p.amount,
+    r.rental_id
+
+FROM payment p
+
+JOIN rental r
+ON p.rental_id = r.rental_id
+
+JOIN inventory i
+ON r.inventory_id = i.inventory_id
+
+JOIN film f
+ON i.film_id = f.film_id
+
+JOIN film_category fc
+ON f.film_id = fc.film_id
+
+JOIN category c
+ON fc.category_id = c.category_id
+
+"
+
+data_sakila <- dbGetQuery(con, query)
+
+head(data_sakila)
+```
+
+---
+
+# Struktur Dataset
+
+```{r}
+str(data_sakila)
+```
+
+# Interpretasi
+> Berdasarkan hasil str(data_sakila), dataset terdiri dari beberapa variabel utama yang digunakan untuk menganalisis transaksi rental film pada database Sakila.
+Variabel yang digunakan antara lain:
+**category bertipe karakter (chr) yang menunjukkan kategori atau genre film.
+amount bertipe numerik (num) yang menunjukkan jumlah pembayaran pada setiap transaksi rental.
+rental_id bertipe integer (int) yang berfungsi sebagai identitas unik setiap transaksi rental.**
+Struktur dataset menunjukkan bahwa data telah tersusun dengan format yang sesuai untuk analisis statistik dan visualisasi. Tipe data numerik pada variabel amount memungkinkan dilakukan perhitungan seperti rata-rata, total pendapatan, dan korelasi. Sementara variabel kategori dapat digunakan untuk pengelompokan data berdasarkan genre film.
+
+---
+
+# Ringkasan Dataset
+
+```{r}
+summary(data_sakila)
+```
+# Interpretasi
+> Berdasarkan hasil summary(data_sakila), terlihat gambaran umum data transaksi rental film. Variabel amount menunjukkan variasi pembayaran pelanggan melalui nilai minimum, maksimum, median, dan rata-rata transaksi. Sementara variabel category menunjukkan beragam kategori film yang tersedia dalam dataset. Ringkasan ini membantu memahami pola umum transaksi sebelum dilakukan analisis lebih lanjut pada database Sakila.
+
+---
+
+# Pengolahan Data
+
+## Menghitung Total Rental dan Total Pendapatan per Kategori Film
+
+```{r}
+kategori_summary <- data_sakila %>%
+  group_by(category) %>%
+  summarise(
+    jumlah_rental = n(),
+    total_pendapatan = sum(amount),
+    rata_pembayaran = mean(amount)
+  ) %>%
+  arrange(desc(jumlah_rental))
+
+kategori_summary
+```
+
+---
+
+# Interpretasi
+
+> Tabel di atas menunjukkan jumlah rental pada setiap kategori film, total pendapatan yang dihasilkan, serta rata-rata pembayaran pelanggan. Melalui data tersebut dapat diketahui bahwa kategori dengan jumlah rental tinggi belum tentu menghasilkan total pendapatan paling besar.
+
+---
+
+# Visualisasi Data
+
+## Perbandingan Jumlah Rental dan Total Pendapatan
+
+```{r}
+ggplot(
+  kategori_summary,
+  aes(
+    x = reorder(category, jumlah_rental),
+    y = jumlah_rental,
+    fill = total_pendapatan
+  )
+) +
+  geom_col() +
+  coord_flip() +
+  labs(
+    title = "Jumlah Rental dan Pendapatan per Kategori Film",
+    x = "Kategori Film",
+    y = "Jumlah Rental",
+    fill = "Total Pendapatan"
+  ) +
+  theme_minimal()
+```
+
+---
+
+# Interpretasi Visualisasi
+
+> Berdasarkan visualisasi di atas, terlihat bahwa beberapa kategori film memiliki jumlah rental yang tinggi, tetapi tidak selalu menghasilkan total pendapatan terbesar.
+
+**Hal ini menunjukkan bahwa banyaknya transaksi rental tidak selalu berbanding lurus dengan keuntungan yang diperoleh perusahaan. Faktor seperti harga rental dan pola pembayaran pelanggan juga memengaruhi total pendapatan.**
+
+---
+
+# Analisis Data Menggunakan Korelasi
+
+## Rumus Korelasi Pearson
+
+**Hubungan antara jumlah rental dan total pendapatan dapat dianalisis menggunakan korelasi Pearson berikut**
+**Keterangan:**
+
+- $r$ = koefisien korelasi
+- $x$ = jumlah rental
+- $y$ = total pendapatan
+
+---
+
+## Pengujian Korelasi
+
+```{r}
+correlation <- cor(
+  kategori_summary$jumlah_rental,
+  kategori_summary$total_pendapatan
+)
+
+correlation
+```
+
+---
+
+# Interpretasi Analisis
+
+> Nilai korelasi menunjukkan hubungan antara jumlah rental dan total pendapatan pada setiap kategori film.
+Jika nilai korelasi mendekati 1, maka hubungan keduanya kuat dan positif. Namun apabila tidak terlalu tinggi, maka jumlah rental bukan satu-satunya faktor yang menentukan besarnya pendapatan perusahaan.
+Hal ini menunjukkan bahwa kategori dengan transaksi rental tinggi belum tentu memberikan kontribusi pendapatan terbesar.
+
+---
+
+# Insight Utama
+
+> Kategori film yang paling sering dirental tidak selalu menjadi kategori dengan pendapatan terbesar.
+
+**Insight ini menunjukkan bahwa perusahaan tidak hanya perlu fokus pada jumlah transaksi, tetapi juga perlu mempertimbangkan profitabilitas setiap kategori film.**
+
+---
+
+# Implikasi Bisnis
+
+> Berdasarkan hasil analisis, perusahaan rental film dapat menerapkan strategi berikut:
+**memprioritaskan kategori film dengan profitabilitas tinggi,
+mengoptimalkan harga rental pada kategori populer,
+meningkatkan promosi pada kategori dengan potensi pendapatan besar,
+dan mengevaluasi kategori yang memiliki banyak transaksi tetapi pendapatan rendah.**
+
+---
+
+# Kesimpulan
+
+> Berdasarkan hasil analisis dan visualisasi data, dapat disimpulkan bahwa:
+**jumlah rental berbeda pada setiap kategori film,
+kategori dengan jumlah rental tertinggi belum tentu menghasilkan pendapatan terbesar,
+total pendapatan dipengaruhi oleh beberapa faktor selain frekuensi rental**,
+sehingga perusahaan perlu mempertimbangkan profitabilitas kategori film dalam pengambilan keputusan bisnis.
+Analisis ini menunjukkan bahwa pengolahan data menggunakan R Markdown dapat membantu perusahaan memahami pola transaksi pelanggan dan mendukung strategi bisnis berbasis data.
